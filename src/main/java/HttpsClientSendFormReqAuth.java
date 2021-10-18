@@ -1,45 +1,16 @@
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.server.*;
-import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.util.Fields;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Enumeration;
 
-class MyHandler extends AbstractHandler {
-
-    @Override
-    public void handle(String target, Request baseRequest,
-                       HttpServletRequest request,
-                       HttpServletResponse response)
-            throws IOException, ServletException {
-
-        response.setContentType("text/plain;charset=utf-8");
-        response.setStatus(HttpServletResponse.SC_OK);
-        baseRequest.setHandled(true);
-
-        PrintWriter out = response.getWriter();
-
-        for (Enumeration<String> e = baseRequest.getParameterNames();
-             e.hasMoreElements();) {
-            String name = e.nextElement();
-            out.format("server:  your %s -> %s%n", name, baseRequest.getParameter(name));
-        }
-    }
-}
-
-public class HttpsClientSendForm {
+public class HttpsClientSendFormReqAuth {
     private Server server;
     private HttpClient client;
 
-    public void startServer() throws Exception {
+    private void startServer() throws Exception {
         server = new Server();
         HttpConfiguration httpConfiguration = new HttpConfiguration();
         httpConfiguration.setSecureScheme("https");
@@ -50,6 +21,8 @@ public class HttpsClientSendForm {
         sslContextFactory.setKeyStoreResource(Resource.newClassPathResource("server"));
         sslContextFactory.setKeyStorePassword("123456");
         sslContextFactory.setKeyManagerPassword("123456");
+        sslContextFactory.setTrustStoreResource(Resource.newClassPathResource("trust"));
+        sslContextFactory.setNeedClientAuth(true);
 
         HttpConfiguration https_config = new HttpConfiguration(httpConfiguration);
         https_config.addCustomizer(new SecureRequestCustomizer());
@@ -69,11 +42,13 @@ public class HttpsClientSendForm {
 
     }
 
-    public void startClient() throws Exception {
+    private void startClient() throws Exception {
 
         SslContextFactory sslContextFactory = new SslContextFactory();
-
         sslContextFactory.setTrustStoreResource(Resource.newClassPathResource("trust"));
+        sslContextFactory.setKeyStoreResource(Resource.newClassPathResource("server"));
+        sslContextFactory.setKeyStorePassword("123456");
+        sslContextFactory.setKeyManagerPassword("123456");
 
         client = new HttpClient(sslContextFactory);
         client.start();
@@ -89,14 +64,14 @@ public class HttpsClientSendForm {
         System.out.println(res.getContentAsString());
     }
 
-    public void stopClientServer() throws Exception {
+    private void stopClientServer() throws Exception {
         client.stop();
         server.stop();
     }
 
     public static void main(String[] args) throws Exception {
 
-        HttpsClientSendForm smp = new HttpsClientSendForm();
+        HttpsClientSendFormReqAuth smp = new HttpsClientSendFormReqAuth();
         smp.startServer();
         smp.startClient();
         smp.stopClientServer();
